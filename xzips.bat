@@ -1,6 +1,9 @@
 @echo off
 REM Extract the contents of every zip file in the current directory into
 REM seperate directories
+
+REM 7z.exe must be accessible from the "Path" environment variable
+
 setlocal EnableDelayedExpansion
 if errorlevel 1 (
 	echo Unable to enable Delayed variable expansion
