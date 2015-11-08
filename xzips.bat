@@ -1,9 +1,6 @@
 @echo off
 REM Extract the contents of every zip file in the current directory into
 REM seperate directories
-
-REM 7z.exe must be accessible from the "Path" environment variable
-
 setlocal EnableDelayedExpansion
 if errorlevel 1 (
 	echo Unable to enable Delayed variable expansion
@@ -13,7 +10,6 @@ if errorlevel 1 (
 set debug=no
 set destination=%~dp0
 set single_dir=no
-set _slash=\
 
 if -%1-==-- goto loopend
 
@@ -32,6 +28,10 @@ if %1==--debug (
 ) else if %1==-od (
 	set destination=%~2
 	shift
+) else if %1==here (
+	set single_dir=yes
+	set destination=.
+	goto loopend
 ) else if %1==-h (
 	goto printHelp
 ) else if %1==--help (
@@ -40,6 +40,7 @@ if %1==--debug (
 shift
 if not -%1-==-- goto argloop
 
+:loopend
 REM Add trailing slash if necessary
 if not !destination:~-1!==\ (
 	if not !destination:~-1!==/ (
@@ -47,19 +48,25 @@ if not !destination:~-1!==\ (
 	)
 )
 
-REM Situation: execute "xzips.bat -sd"
-REM A new directory should be created to hold the contents of all the archives
-REM since extracting everything to the current directory might clutter it up.
-REM An "extract all here" can be done with "xzips.bat -sd -od ."
+REM "xzips.bat -sd"
+REM In this situation a new directory should be created to hold the contents
+REM of all the archives since extracting everything to the current directory
+REM might clutter it up. All archives' contents can be extracted to the housing
+REM directory with "xzips -sd -od ." or with the shorthand "xzips here"
 if !single_dir!==yes (
 	if "!destination!" == "%~dp0" (
 		set destination=!destination!archives\
 	)
 )
 
-:loopend
 for %%i in (*) do (
-	if %%~xi==.zip (
+	set _procfile=no
+	if %%~xi==.zip set _procfile=yes
+	if %%~xi==.rar set _procfile=yes
+	if %%~xi==.tar set _procfile=yes
+	if %%~xi==.gz set _procfile=yes
+	if %%~xi==.7z set _procfile=yes
+	if !_procfile!==yes (
 		if !single_dir!==no (
 			set tmp_dst=!destination!%%~ni
 			if !debug!==yes (
@@ -81,14 +88,18 @@ exit /B
 :printHelp
 echo Extracts the contents of every zip file in the current directory
 echo.
-echo xzips [options]
+echo xzips [options] [here]
 echo.
+echo   OPTIONS
 echo   -d, --debug
 echo       Don't extract any archives, print the command to the console instead
 echo   -sd, --single-directory
 echo       Extract all archives to the same directory
 echo   -od dir (--output-directory)
 echo       Directory to output the archive contents to
+echo   here
+echo       Shorthand for "-sd -od .", effectively extracting every archive's
+echo       contents to the current directory
 echo   -h, --help
 echo       Print this message
 echo.
@@ -98,4 +109,5 @@ echo The -sd option will consolidate the contents of all archives into just the
 echo output directory (current directory if not specified). If -sd is the only
 echo option specified a new directory will be created to hold the archives'
 echo contents.
-echo "xzips -sd -od ." can be used to store everything in the current directory
+echo "xzips -sd -od ." or "xzips here" can be used to store all archive
+echo contents in the current directory
