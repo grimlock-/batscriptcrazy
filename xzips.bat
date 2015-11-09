@@ -8,7 +8,7 @@ if errorlevel 1 (
 )
 
 set debug=no
-set destination=%~dp0
+set destination=.\
 set single_dir=no
 
 if -%1-==-- goto loopend
@@ -54,7 +54,7 @@ REM of all the archives since extracting everything to the current directory
 REM might clutter it up. All archives' contents can be extracted to the housing
 REM directory with "xzips -sd -od ." or with the shorthand "xzips here"
 if !single_dir!==yes (
-	if "!destination!" == "%~dp0" (
+	if !destination!==.\ (
 		set destination=!destination!archives\
 	)
 )
@@ -70,15 +70,15 @@ for %%i in (*) do (
 		if !single_dir!==no (
 			set tmp_dst=!destination!%%~ni
 			if !debug!==yes (
-				echo 7z.exe x -r -o"!tmp_dst!" %%i
+				echo 7z.exe x -r -o"!tmp_dst!" "%%i"
 			) else (
-				call 7z.exe x -r -o"!tmp_dst!" %%i
+				call 7z.exe x -r -o"!tmp_dst!" "%%i"
 			)
 		) else (
 			if !debug!==yes (
-				echo 7z.exe x -r -o"!destination!" %%i
+				echo 7z.exe x -r -o"!destination!" "%%i"
 			) else (
-				call 7z.exe x -r -o"!destination!" %%i
+				call 7z.exe x -r -o"!destination!" "%%i"
 			)
 		)
 	)
