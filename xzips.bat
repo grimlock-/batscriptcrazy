@@ -8,7 +8,7 @@ if errorlevel 1 (
 )
 
 set debug=no
-set destination=.\
+set destination=%cd%
 set single_dir=no
 
 if -%1-==-- goto loopend
@@ -48,13 +48,14 @@ if not !destination:~-1!==\ (
 	)
 )
 
+
 REM "xzips.bat -sd"
 REM In this situation a new directory should be created to hold the contents
 REM of all the archives since extracting everything to the current directory
 REM might clutter it up. All archives' contents can be extracted to the housing
 REM directory with "xzips -sd -od ." or with the shorthand "xzips here"
 if !single_dir!==yes (
-	if !destination!==.\ (
+	if "!destination!" == "%cd%\" (
 		set destination=!destination!archives\
 	)
 )
