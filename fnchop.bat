@@ -1,6 +1,6 @@
 @echo off
-REM This Script removes the first X characters from every filename in the
-REM the current directory where X is a user provided integer
+REM This script removes the first X characters from every filename in the
+REM the current directory where X is a user provided number
 setlocal EnableDelayedExpansion
 if errorlevel 1 (
 	echo Unable to enable Delayed variable expansion
@@ -24,151 +24,225 @@ echo.
 echo   OPTIONS
 echo     -e, --end
 echo         Removes characters from end of filename instead of beginning
-echo     -nd, --no-directories (NOT YET IMPLEMENTED)
-echo         Disable operation on directories
-echo     -nf, --no-files (NOT YET IMPLEMENTED)
-echo         Disable operation on files
+echo     -d, --directories
+echo         Operate on directories in addition to files
+echo     -D, --directories-only
+echo         Operate on directories instead of files
 echo     -h, --hold
 echo         Don't rename anything, just print out the new filenames
-echo     -d, --debug
+echo     --debug
 echo         "hold" flag and some more verbose output
 echo     --help
 echo         Print this message
 exit /B
 
 :procDir
-REM TODO - everything
+	set a=%~1
+	if !_debug!==yes (
+		echo Directory  : !a!
+	)
+	
+	REM Get filename and extension length
+	echo !a!>x & for %%i in (x) do (
+		set /A count=%%~zi - 2 & del x
+	)
+	set /A count=!count!-1
+	
+	if !_debug!==yes (
+		echo Name length: !count!
+	)
+	
+	if !qt! GEQ !count! (
+		echo Cannot chop all characters or more than are present, skipping !a:~0,7!...
+		echo.
+		goto :eof
+	)
+	
+	call set "newName=!a:~%qt%!"
+	if !_debug!==yes (
+		echo New name   : !newName!
+		echo.
+	) else if !_hold!==yes (
+		echo Directory: !a!
+		echo New name : !newName!
+		echo.
+	) else (
+		rename "!a!" "!newName!"
+	)
+goto :eof
 
 :rprocDir
-REM TODO - everything
+	set a=%~1
+	if !_debug!==yes (
+		echo Directory  : !a!
+	)
+	
+	REM Get filename and extension length
+	echo !a!>x & for %%i in (x) do (
+		set /A count=%%~zi - 2 & del x
+	)
+	set /A count=!count!-1
+	
+	if !_debug!==yes (
+		echo Name length: !count!
+	)
+	
+	if !qt! GEQ !count! (
+		echo Cannot chop all characters or more than are present, skipping !a:~0,7!...
+		echo.
+		goto :eof
+	)
+	
+	set /A "back_ofst=0-!qt!"
+	call set "lose_this=!a:~%back_ofst%!"
+	call set "newName=!a:%lose_this%=!"
+	
+	if !_debug!==yes (
+		echo Removing   : !lose_this!
+		echo New name   : !newName!
+		echo.
+	) else if !_hold!==yes (
+		echo Directory: !a!
+		echo New name : !newName!
+		echo.
+	) else (
+		rename "!a!" "!newName!"
+	)
+goto :eof
 
 :procFile
-set a=%~1
-if !_debug!==yes (
-	echo file:         !a!
-)
+	set a=%~1
+	if !_debug!==yes (
+		echo File        : !a!
+	)
+	
+	REM Get filename and extension length
+	echo !a!>x & for %%i in (x) do (
+		set /A count=%%~zi - 2 & del x
+	)
+	set /A count=!count!-1
+	echo !ext!>x & for %%i in (x) do (
+		set /A extcount=%%~zi - 2 & del x
+	)
+	set /A extcount=!extcount!-1
+	set /A "fnlength=!count!-!extcount!"
+	
+	if !_debug!==yes (
+		echo Name length : !fnlength!
+	)
 
-echo !a!>x & for %%i in (x) do (
-	set /A count=%%~zi - 2 & del x
-)
-set /A count=!count!-1
-set /A _fnlength=!count!-4
-REM echo count is !count!
-REM call echo %count%
+	if !qt! GEQ !fnlength! (
+		echo Cannot chop all characters or more than are present, skipping !a:~0,7!...
+		echo.
+		goto :eof
+	)
 
-if !_qt! GEQ !_fnlength! (
-	echo Cannot chop more characters than are present, skipping !a:~0,12!...
-	goto :eof
-)
-
-call set "_newName=!a:~%_qt%!"
-if !_debug!==yes (
-	echo new filename: !_newName!
-) else if !_hold!==yes (
-	echo new filename: !_newName!
-) else (
-	REM Add a check to make sure the file exists
-	rename "!a!" "!_newName!"
-)
-
-
-echo.
+	call set "newName=!a:~%qt%!"
+	if !_debug!==yes (
+		echo new filename: !newName!
+		echo.
+	) else if !_hold!==yes (
+		echo old filename: !a!
+		echo new filename: !newName!
+		echo.
+	) else (
+		rename "!a!" "!newName!"
+	)
 goto :eof
-
-
-
 
 :rprocFile
-set a=%~1
-if !_debug!==yes (
-	echo file:         !a!
-	echo extension:    !_ext!
-)
+	set a=%~1
+	if !_debug!==yes (
+		echo File        : !a!
+	)
 
-REM Get filename length and extension length
-echo !a!>x & for %%i in (x) do (
-	set /A count=%%~zi - 2 & del x
-)
-set /A count=!count!-1
-echo !_ext!>x & for %%i in (x) do (
-	set /A extcount=%%~zi - 2 & del x
-)
-set /A extcount=!extcount!-1
-set /A "_fnlength=!count!-!extcount!"
+	REM Get filename length and extension length
+	echo !a!>x & for %%i in (x) do (
+		set /A count=%%~zi - 2 & del x
+	)
+	set /A count=!count!-1
+	echo !ext!>x & for %%i in (x) do (
+		set /A extcount=%%~zi - 2 & del x
+	)
+	set /A extcount=!extcount!-1
+	set /A "fnlength=!count!-!extcount!"
+	
+	if !_debug!==yes (
+		echo Name length : !fnlength!
+	)
 
-if !_qt! GEQ !_fnlength! (
-	echo Cannot chop more characters than are present, skipping !a:~0,12!...
-	goto :eof
-)
+	if !qt! GEQ !fnlength! (
+		echo Cannot chop all characters or more than are present, skipping !a:~0,7!...
+		echo.
+		goto :eof
+	)
 
-REM Back offset -> offset to use to find the substring we want to chop off
-set /A "back_ofst=%extcount%+%_qt%"
-set /A "back_ofst=0-!back_ofst!"
-
-
-call set "lose_this=!a:~%back_ofst%!"
-call set "_newName=!a:%lose_this%=!"
-call set "_newName=!_newName!!_ext!"
+	REM Back offset -> offset to use to find the substring we want to chop off
+	set /A "back_ofst=%extcount%+%qt%"
+	set /A "back_ofst=0-!back_ofst!"
 
 
-if !_debug!==yes (
-	echo new filename: !_newName!
-) else if !_hold!==yes (
-	echo new filename: !_newName!
-) else (
-	REM Add a check to make sure the file exists
-	rename "!a!" "!_newName!"
-)
+	call set "lose_this=!a:~%back_ofst%!"
+	call set "newName=!a:%lose_this%=!"
+	call set "newName=!newName!!ext!"
 
-echo.
 
+	if !_debug!==yes (
+		echo Removing    : !lose_this!
+		echo new filename: !newName!
+		echo.
+	) else if !_hold!==yes (
+		echo old filename: !a!
+		echo new filename: !newName!
+		echo.
+	) else (
+		rename "!a!" "!newName!"
+	)
 goto :eof
 
-
-
-
 :main
-set a=
-set _self=%~nx0
+set _me=%~nx0
 set _mode=beg
-set _qt=0
+set qt=0
 set _debug=no
 set _hold=no
 set _files=yes
-set _directories=yes
+set _directories=no
 
 :argloop
 if %1==-e (
 	set _mode=end
 ) else if %1==--end (
 	set _mode=end
+) else if %1==-d (
+	set _directories=yes
+) else if %1==--directories (
+	set _directories=yes
+) else if %1==-D (
+	set _directories=yes
+	set _files=no
+) else if %1==--directories-only (
+	set _directories=yes
+	set _files=no
 ) else if %1==-h (
 	set _hold=yes
 ) else if %1==--hold (
 	set _hold=yes
-) else if %1==-nf (
-	set _files=no
-) else if %1==-no-files (
-	set _files=no
-) else if %1==-nd (
-	set _directories=no
-) else if %1==--no-directories (
-	set _directories=no
-) else if %1==--d (
-	set _debug=yes
 ) else if %1==--debug (
 	set _debug=yes
 ) else if %1==--help (
-	goto :printHelp
+	goto printHelp
 ) else (
-	set _qt=%1
+	set qt=%1
 )
 shift
 if not -%1-==-- goto argloop
 
-REM Test to see if _qt is a number
+REM sanity checks
+if -!qt!-==-- goto printHelp
+REM Test to see if qt is a number
 REM If not, the error level will be set to 1
-echo !_qt!| findstr /r "^[1-9][0-9]*$">nul
+echo !qt!| findstr /r "^[1-9][0-9]*$">nul
 if errorlevel 1 (
 	echo Please make the last argument a number
 	exit /B
@@ -176,29 +250,47 @@ if errorlevel 1 (
 
 if !_debug!==yes (
 	if !_mode!==end (
-		echo Remove from: End
+		echo Remove from       : End
 	) else (
-		echo Remove from: Beginning
+		echo Remove from       : Beginning
+	)
+	if !_files!==yes (
+		echo Rename files      : YES
+	) else (
+		echo Rename files      : NO
+	)
+	if !_directories!==yes (
+		echo Rename directories: YES
+	) else (
+		echo Rename directories: NO
 	)
 	if !_hold!==yes (
-		echo Hold flag  : YES
+		echo Hold flag         : YES
 	) else (
-		echo Hold flag  : NO
+		echo Hold flag         : NO
 	)
-	echo Quantity   : !_qt!
+	echo Quantity          : !qt!
+	echo.
 )
 
-for %%i in (*) do (
-	if not %%i==!_self! (
-		set attributes=%%~ai
-		set dir_attr=!attributes:~0,1!
-		if /I "!dir_attr!"=="d" echo %%i is a directory
-	
-		set _ext=%%~xi
+if !_files!==yes (
+	for %%i in (*) do (
+		if not %%i==!_me! (
+			set ext=%%~xi
+			if !_mode!==beg (
+				call :procFile "%%i"
+			) else (
+				call :rprocFile "%%i"
+			)
+		)
+	)
+)
+if !_directories!==yes (
+	for /D %%i in (*) do (
 		if !_mode!==beg (
-			call procFile "%%i"
+			call :procDir "%%i"
 		) else (
-			call rprocFile "%%i"
+			call :rprocDir "%%i"
 		)
 	)
 )
