@@ -1,6 +1,12 @@
 @echo off
 REM Extract the contents of every zip file in the current directory into
 REM seperate directories
+
+REM 7z.exe must be accessible from the "Path" environment variable
+
+REM BUGS:
+REM   *Unable to extract from archives with a filename that contains an
+REM    exclamation point (!) or an ampersand (&)
 setlocal EnableDelayedExpansion
 if errorlevel 1 (
 	echo Unable to enable Delayed variable expansion
@@ -112,3 +118,4 @@ echo option specified a new directory will be created to hold the archives'
 echo contents.
 echo "xzips -sd -od ." or "xzips here" can be used to store all archive
 echo contents in the current directory
+exit /B
