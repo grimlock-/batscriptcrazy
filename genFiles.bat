@@ -40,7 +40,7 @@ REM 	- cat1file1.json, cat1file2.json, cat1file3.json, cat2file1.json, cat2file2
 REM Tokens:
 REM			:x,1:					Counter [leading zeroes]
 REM			:vn,sX,eX,iX,zX,nX:		Variable-number  [start, end, increment, leading zeroes, change num every nth iteration]
-REM			:rn,236,3:				Repeating-number  [num to repeat, max num of repeats]
+REM			:rn,236,r3:				Repeating-number  [num to repeat, max num of repeats]
 REM			:rs,asdf,3:				Repeating-string  [string to repeat, max num of repeats]
 
 :printHelp
@@ -94,8 +94,10 @@ echo.
 echo    --disable-counter
 echo        Don't add "(X)" to the end of each filename
 echo.
-echo    --debug
-echo        Don't create any files, just output the properties of the pattern
+echo    --debug [number]
+echo        Don't create any files and print information detailing scipt actions.
+echo        Higher numbers will result in more information being printed to the
+echo        console. Defaults to level 1
 echo.
 echo    --help
 echo        Print this message
@@ -104,11 +106,10 @@ exit /B
 REM TODO - Function explanation
 REM Expects first character to be a colon, 
 :parsetoken
-	REM if !_debug!==yes (
-		REM echo.
-		REM echo ---parsetoken start---
-		REM echo Arg 1: %1
-	REM )
+	if !_debuglvl! GTR 2 (
+		echo ---parsetoken start---
+		echo Arg 1: %1
+	)
 	set a=%~1
 	set first=!a:~0,1!
 	if not !first!==: (
@@ -119,39 +120,37 @@ REM Expects first character to be a colon,
 	set b=1
 	:gettoken
 	call set c=!a:~%b%,1!
-REM	echo Char: !c!
+	if !_debuglvl! GTR 2 echo Char: !c!
 	if not !c!==: (
 		set /A "b+=1"
 		goto gettoken
 	)
 	set /A "b-=1"
 	call set token=!a:~1,%b%!
-REM	echo Token [!token!]
+	if !_debuglvl! GTR 2 echo Token "!token!"
 	set /A "b+=2"
 	call set "patternTemp=!patternTemp:~%b%!"
-	REM Recalculate length
-	echo !patternTemp!>x & for %%j in (x) do (
-		set /A length=%%~zj - 2 & del x
-	)
-	set /A length=!length!-1
+	call set /A "length-=%b%"
 	set i=0
 	
-REM	echo FOR loop start
+	if !_debuglvl! GTR 2 echo FOR loop start
 	for /F "delims=," %%j in ("!token!") do (
 		if %%j==x (
-REM			if !_debug!==yes echo Found token for file counter
+			if !_debuglvl! GTR 1 echo Found token for file counter. Currently on file #!fileNum!
 			set fname=!fname!!fileNum!
+			if !_debuglvl! GTR 1 echo Filename is now "!fname!"
 		) else if %%j==vn (
-			if !_debug!==yes echo Found token for variable number
+			if !_debuglvl! GTR 1 echo Found token for variable number
 		) else if %%j==rn (
-			if !_debug!==yes echo Found token for repeating number
+			if !_debuglvl! GTR 1 echo Found token for repeating number
 		) else if %%j==rs (
-			if !_debug!==yes echo Found token for repeating string
+			if !_debuglvl! GTR 1 echo Found token for repeating string
 		)
 	)
-	REM echo FOR loop end
-	REM echo ---parsetoken end---
-	REM echo.
+	if !_debuglvl! GTR 2 (
+		echo FOR loop end
+		echo ---parsetoken end---
+	)
 goto :eof
 
 :main
@@ -160,9 +159,8 @@ set numFiles=0
 set pattern=New Text Document
 set ext=txt
 set counter=yes
-set content=NUL
 set contentFile=no
-set _debug=no
+set _debuglvl=0
 
 
 :argloop
@@ -177,13 +175,13 @@ if %1==-p (
 ) else if %1==--extension (
 	set ext=%1
 ) else if %1==-c (
-	set content=%2
+	set content=%~2
 	shift
 ) else if %1==--content (
-	set content=%2
+	set content=%~2
 	shift
 ) else if %1==-ct (
-	set content=%2
+	set content=%~2
 	set contentFile=yes
 	shift
 ) else if %1==--content-template (
@@ -193,7 +191,18 @@ if %1==-p (
 ) else if %1==--disable-counter (
 	set counter=no
 ) else if %1==--debug (
-	set _debug=yes
+	if not -%3-==-- (
+		set _debuglvl=%2
+		echo !_debuglvl!| findstr /r "^[1-9][0-9]*$">nul
+		if errorlevel 1 (
+			set _debuglvl=1
+			set errorlevel=0
+		) else (
+			shift
+		)
+	) else (
+		set _debuglvl=1
+	)
 ) else if %1==--help (
 	goto printHelp
 ) else (
@@ -219,12 +228,14 @@ if !numFiles! LEQ 0 goto printHelp
 
 
 REM Print options
-if !_debug!==yes (
+if !_debuglvl! GTR 0 (
+	echo.
+	echo Debug level                   : !_debuglvl!
 	echo Number of files to create     : !numFiles!
 	echo Filename pattern specification: !pattern!
 	echo Contents of each file         : !content!
 	echo Extension for new files       : !ext!
-	echo Use counter                   : !counter!
+	echo Use counter in filename       : !counter!
 	echo.
 )
 
@@ -239,23 +250,27 @@ set fname=
 
 :parsepattern
 call set char=!patternTemp:~%i%,1!
+if !_debuglvl! GTR 2 echo Char: !char!
 if !char!==: (
-REM	if !_debug!==yes echo Found Semicolon
+	if !_debuglvl! GTR 1 (
+		echo Found Semicolon at offset !i!
+		call echo Adding !patternTemp:~0,%i%! to filename
+	)
 	set /A "i-=1"
 	call set fname=!patternTemp:~0,%i%!
+	if !_debuglvl! GTR 1 echo Filename is now "!fname!"
 	set /A "i+=i"
 	call set patternTemp=!patternTemp:~%i%,%length%!
-	REM Recalculate length
-	echo !patternTemp!>x & for %%j in (x) do (
-		set /A length=%%~zj - 2 & del x
-	)
-	set /A length=!length!-1
+	call set /A "length-=%i%"
 	
 	call :parsetoken !patternTemp!
+	if !_debuglvl! GTR 1 echo Remaining pattern: !patternTemp!
 )
 set /A "i+=1"
-REM echo Finished processing character !i!
-if !i! LEQ !length! ( 
+if !i! LEQ !length! (
+	if !_debuglvl! GTR 2 (
+		echo Finished character "!i!" of "!length!", continuing pattern processing
+	)
 	goto parsepattern
 ) else (
 	if !length! GTR 0 (
@@ -269,20 +284,22 @@ if !i! LEQ !length! (
 if !counter!==yes set fname=!fname! (!fileNum!)
 set fname=!fname!.!ext!
 
-@echo on
-if !_debug!==yes (
+
+if !_debuglvl! GTR 0 (
 	echo copy "!content!" "!fname!"
+	if !_debuglvl! GTR 1 echo.
+	if !_debuglvl! GTR 2 echo.
 ) else if not exist !fname! (
-	if !contentFile!==no (
-		echo !content:^"=! > "!fname!"
+	if -!content!-==-- (
+		copy NUL "!fname!"
+	) else if !contentFile!==no (
+		echo !content! > "!fname!"
 	) else (
 		copy "!content!" "!fname!"
 	)
 ) else (
 	echo File "!fname:~0,53!" already exists!
 )
-@echo off
-
 
 set /a "fileNum+=1"
 if !fileNum! LEQ !numFiles! goto mainloop
