@@ -24,6 +24,12 @@ if %1==--debug (
 	set debug=yes
 ) else if %1==-d (
 	set debug=yes
+) else if %1==-p (
+	set pass=%2
+	shift
+) else if %1==--password (
+	set pass=%2
+	shift
 ) else if %1==--single-directory (
 	set single_dir=yes
 ) else if %1==-sd (
@@ -37,7 +43,6 @@ if %1==--debug (
 ) else if %1==here (
 	set single_dir=yes
 	set destination=.
-	goto loopend
 ) else if %1==-h (
 	goto printHelp
 ) else if %1==--help (
@@ -66,6 +71,7 @@ if !single_dir!==yes (
 	)
 )
 
+
 for %%i in (*) do (
 	set _procfile=no
 	if %%~xi==.zip set _procfile=yes
@@ -77,15 +83,15 @@ for %%i in (*) do (
 		if !single_dir!==no (
 			set tmp_dst=!destination!%%~ni
 			if !debug!==yes (
-				echo 7z.exe x -r -o"!tmp_dst!" "%%i"
+				echo 7z.exe x -r -o"!tmp_dst!" -p!pass! "%%i"
 			) else (
-				call 7z.exe x -r -o"!tmp_dst!" "%%i"
+				call 7z.exe x -r -o"!tmp_dst!" -p!pass! "%%i"
 			)
 		) else (
 			if !debug!==yes (
-				echo 7z.exe x -r -o"!destination!" "%%i"
+				echo 7z.exe x -r -o"!destination!" -p!pass! "%%i"
 			) else (
-				call 7z.exe x -r -o"!destination!" "%%i"
+				call 7z.exe x -r -o"!destination!" -p!pass! "%%i"
 			)
 		)
 	)
@@ -100,6 +106,8 @@ echo.
 echo   OPTIONS
 echo   -d, --debug
 echo       Don't extract any archives, print the command to the console instead
+echo   -p, --password
+echo       Extract archives using the provided password
 echo   -sd, --single-directory
 echo       Extract all archives to the same directory
 echo   -od dir (--output-directory)
@@ -118,4 +126,14 @@ echo option specified a new directory will be created to hold the archives'
 echo contents.
 echo "xzips -sd -od ." or "xzips here" can be used to store all archive
 echo contents in the current directory
+echo.
+echo PASSWORDS
+echo When entering a password you must enclose it with qutation marks.
+echo Also, if the password contains an exclamation mark or an ampersand you must
+echo escape it when passing the string to the script.
+echo.
+echo     ex: D:\home\Desktop> xzips -sd -p "12^!35"
+echo.
+echo Also bere in mind that the debugging flag won't work when specifying a password
+echo that includes one of those characters.
 exit /B
