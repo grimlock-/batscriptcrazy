@@ -1,22 +1,4 @@
 @echo off
-REM This script takes a string as an argument and adds it to the name of
-REM every file or directory in the current directory
-
-REM IDEAS
-REM   *Allow user to specify an array of strings to be cycled through when
-REM    creating filenames
-REM       -Counter that only increments after a complete pass through the array
-REM       -or instead of a string array, specify a number range
-REM   *What I really need to do is set up a system for specifying a naming
-REM    convention. Like having the user specify a single unit/entity (number,
-REM    character, string) and then add modifiers to it (add string to end or
-REM    beginning of filename, increment number after each file by specified
-REM    amount or multiply by a given number, repeat some character x number of
-REM    times)
-REM        -And I mean implementing this as a user-provided string kind of like
-REM         regular expressions, not some hideous assortment of 50 command line
-REM         options
-
 setlocal EnableDelayedExpansion
 if errorlevel 1 (
 	echo Unable to enable delayed variable expansion
@@ -38,9 +20,8 @@ REM 	- x.txt, xxx.txt, xxxxx.txt, xxxxxxx.txt, xxxxxxxxx.txt...
 REM 	- cat1file1.json, cat1file2.json, cat1file3.json, cat2file1.json, cat2file2.json, cat2file3.json....
 
 REM Tokens:
-REM			:x,1:					Counter [leading zeroes]
+REM			:x,z1,c:					Counter [leading zeroes, maximum/constant]
 REM			:vn,sX,eX,iX,zX,nX:		Variable-number  [start, end, increment, leading zeroes, change num every nth iteration]
-REM			:rn,236,r3:				Repeating-number  [num to repeat, max num of repeats]
 REM			:rs,asdf,3:				Repeating-string  [string to repeat, max num of repeats]
 
 :printHelp
@@ -51,7 +32,7 @@ echo genFiles [options] number
 echo.
 echo The simplest way to use this script is to provide a number and it will then
 echo create that number of empty text files. These files will be named in typical
-echo windows fashion for new textfiles, "New Text Document (X)" with X incrementing
+echo windows fashion for new text files, "New Text Document (X)" with X incrementing
 echo with each file created to ensure a unique filename.
 echo.
 echo Example:    genFiles 50
@@ -65,13 +46,21 @@ echo In addition to specifying a string constant to be included in each filename
 echo can include tokens to signify dynamic elements such as a number that changes for
 echo each file, or a number/string that repeats a varying number of times. All tokens
 echo and their parameters must be separated from the rest of the pattern with a colon
-echo both before and after the token definition.
+echo both before and after the token definition. A printout of all allowed tokens and
+echo their parameters can be provided with the "--tokens" option
 echo.
 echo Example:    genFiles -p "category:vn,n100:section:vn,n20:" -e xml 300
 echo.
-echo ======================================TODO======================================
-echo                           Finish writing the help page                          
-echo ================================================================================
+echo You can also specify the content of all generated files in one of two ways:
+echo     1) Use the -c option to specify the content of all files on the command line
+echo     2) Use the -cf option to specify a file that each generated file will be a
+echo        copy of
+echo If used with the -e option, nearly any quantity of copies of a single file can
+echo be made.
+echo.
+echo Example:    genFiles -p "unit:x,2:" -cf template.doc 300
+echo                 Will generate 300 Microsoft Word documents as copies of
+echo                 template.doc file with filenames from unit001.doc to unit300.doc
 echo.
 echo.
 echo ARGUMENTS:
@@ -99,12 +88,59 @@ echo        Don't create any files and print information detailing scipt actions
 echo        Higher numbers will result in more information being printed to the
 echo        console. Defaults to level 1
 echo.
+echo    --tokens
+echo        List all supported tokens and their parameters
+echo.
 echo    --help
 echo        Print this message
 exit /B
 
+:printTokens
+echo genFiles Tokens
+echo.
+echo x  - File Counter (ARGUMENTS NOT IMPLEMENTED)
+echo        Inserts the file's number into the pattern (ex: 1 for the 1st file
+echo        generated, 2 for the 2nd file, 3 for the 3rd, etc.)
+echo            z - Leading Zeroes [int]
+echo                Specifies a quantity of leading zeroes that should be inserted
+echo                before the file counter
+echo            c/m - Max or Constant leading zeroes [char]
+echo                Constant leading zeroes will result in the specified number of
+echo                leading zeros always being inserted before the file counter.
+echo                Max leading zeroes results in starting with the specified
+echo                number of leading zeroes and removing one every time a new digit
+echo                is added to the file counter. For example, the following pattern
+echo                        :x,z2,m:
+echo                when executed with a file count of 300 will result in two leading
+echo                zeroes for the first 9 files, one zero up to file 99, and none
+echo                for the remaining files.
+echo                If unspecified, defaults to minimal
+echo.
+echo.
+echo NOT YET IMPLEMENTED
+echo.
+echo vn - Variable Number
+echo          s - Starting number [int]
+echo          e - Ending number [int]
+echo              After reaching the ending number it loops back to the starting num
+echo          i - Increment value [int]
+echo          z - Leading Zeroes [int]
+echo          n - Increment delay [int]
+echo              Only increment
+echo.
+echo rs - Repeating String
+echo          String
+echo          Repeats [int]
+echo.
+echo Examples:
+echo.
+echo     :x,z1,c:					Counter [leading zeroes, max/constant]
+echo     :vn,sX,eX,iX,zX,nX:		Variable-number  [start, end, increment, leading zeroes, change num every nth iteration]
+echo     :rs,asdf,3:				Repeating-string  [string to repeat, max num of repeats]
+exit /B
+
 REM TODO - Function explanation
-REM Expects first character to be a colon, 
+REM Expects first character to be a colon
 :parsetoken
 	if !_debuglvl! GTR 2 (
 		echo ---parsetoken start---
@@ -131,13 +167,16 @@ REM Expects first character to be a colon,
 	set /A "b+=2"
 	call set "patternTemp=!patternTemp:~%b%!"
 	call set /A "length-=%b%"
-	set i=0
+	set i=1
 	
-	if !_debuglvl! GTR 2 echo FOR loop start
-	for /F "delims=," %%j in ("!token!") do (
+	if !_debuglvl! GTR 2 echo FOR loop start. Analyzing "!token!"
+	for /F "tokens=1* delims=," %%j in ("!token!") do (
 		if %%j==x (
 			if !_debuglvl! GTR 1 echo Found token for file counter. Currently on file #!fileNum!
 			set fname=!fname!!fileNum!
+			if not -%%k-==-- (
+				if !_debuglvl! GTR 2 echo Argument for file counter token: %%k
+			)
 			if !_debuglvl! GTR 1 echo Filename is now "!fname!"
 		) else if %%j==vn (
 			if !_debuglvl! GTR 1 echo Found token for variable number
@@ -145,7 +184,11 @@ REM Expects first character to be a colon,
 			if !_debuglvl! GTR 1 echo Found token for repeating number
 		) else if %%j==rs (
 			if !_debuglvl! GTR 1 echo Found token for repeating string
+		) else (
+			if !_debuglvl! GTR 1 echo Unrecognized token "%%j"
 		)
+		if !_debuglvl! GTR 2 echo Iteration #!i!
+		set /A "i+=1"
 	)
 	if !_debuglvl! GTR 2 (
 		echo FOR loop end
@@ -263,7 +306,7 @@ if !char!==: (
 	call set patternTemp=!patternTemp:~%i%,%length%!
 	call set /A "length-=%i%"
 	
-	call :parsetoken !patternTemp!
+	call :parsetoken "!patternTemp!"
 	if !_debuglvl! GTR 1 echo Remaining pattern: !patternTemp!
 )
 set /A "i+=1"

@@ -17,18 +17,22 @@ if errorlevel 1 (
 if not -%1-==-- goto :main
 
 :printHelp
-echo Change file names for number sequence-based file sets (ex. 01.jpg to 99.jpg)
+echo Change file names for number sequence-based file sets (ex: 01.jpg to 99.jpg)
 echo.
-echo fnmod mode [options]
+echo fnmod [options] mode [args]
 echo.
 echo   PRIMARY MODES
 echo     normalize (norm)
 echo         Rename all files in the current directory as a number sequence
 echo         (def. 1.png to n.png)
-echo     increase (inc)
-echo         Rename all files by increasing filename numbers by a set amount (def 1)
-echo     decrease (dec)
-echo         Rename all files by decreasing filename numbers by a set amount (def 1)
+echo     increase(inc) [num]
+echo         Rename all files by increasing them by a specified amount
+echo         Arguments:
+echo             num - Quantity you want to increase by (defaults to 1)
+echo     decrease(dec) [num]
+echo         Rename all files by decreasing them by a specified amount
+echo         Arguments:
+echo             num - Quantity you want to decrease by (defaults to 1)
 echo.
 echo   NOTES
 echo       When using increase or decrease mode, make sure the lower numbered files
@@ -37,17 +41,22 @@ echo       highest numbered file. Otherwise the script will grab the files in th
 echo       wrong order and everything's going to be really messed up
 echo.
 echo   OPTIONS
-echo     -s num (--start) [mode: norm]
-echo         Start new filename sequence from num instead of 1
+echo     -s num (--start) [modes: norm, inc]
+echo         norm mode:
+echo             Start new filename sequence from num instead of 1
+echo         inc mode:
+echo             Only rename files greater than or equal to num
 echo     -cd (--countdown) [mode: norm]
 echo         Normalize filenames by counting down from the starting point instead of
-echo         up. So the first file
+echo         up. So the first file will be the highest number after completion.
 echo     -n num (--quantity) [mode: norm]
 echo         Stop script after renaming num files
 echo     -z (--leading-zeros) [mode: norm]
 echo         Include leading zeros in the newly generated filenames
-echo     -d num (--delta) [modes: inc, dec]
-echo         Numerical difference between all newly named files (def 1)
+echo     --debug
+echo         Verbose output for debugging
+echo     --renames
+echo         Don't rename any files, just print what commands will be run instead
 exit /B
 
 
@@ -98,11 +107,15 @@ exit /B
 			if !leadingzeros!==yes (
 				if !_debug!==rens (
 					echo "%%i" "!zeros!!n!!ext!"
+				) else if !_debug!==yes (
+					echo "%%i" "!zeros!!n!!ext!"
 				) else (
 					ren "%%i" "!zeros!!n!!ext!"
 				)
 			) else (
 				if !_debug!==rens (
+					echo ren "%%i" "!n!!ext!"
+				) else if !_debug!==yes (
 					echo ren "%%i" "!n!!ext!"
 				) else (
 					ren "%%i" "!n!!ext!"
@@ -154,16 +167,18 @@ REM encased inside of and the script would just stop after renaming file 99
 goto :eof
 
 :increase
+	REM Directory listing in descending order
 	for /f "delims=" %%i in ('dir /B /O-n /A-D-H-S') do (
 		if not %%i==!_me! (
 			set zeros=
 			set pot=no
 			REM Sets the filename to the variable n
-			call :removezeros "%%i"
+			call :removezeros "%%~ni"
 			set ext=%%~xi
 			REM Trying to expand both n and step on this line gave a "missing operator." error for some reason
 			set /A newnum=n+step
 			set /A lowbound=n+1
+			REM If renaming adds a digit, take off a leading zero
 			for /L %%j in (!lowbound!,1,!newnum!) do (
 				set pot=no
 				call :getpot "%%j"
@@ -174,9 +189,19 @@ goto :eof
 				)
 			)
 			if !_debug!==rens (
-				echo ren "%%i" "!zeros!!newnum!!ext!"
+				if !n! GEQ !start! (
+					echo n is !n!
+					echo ren "%%i" "!zeros!!newnum!!ext!"
+				)
+			) else if !_debug!==yes (
+				if !n! GEQ !start! (
+					echo n is !n!
+					echo ren "%%i" "!zeros!!newnum!!ext!"
+				)
 			) else (
-				ren "%%i" "!zeros!!newnum!!ext!"
+				if !n! GEQ !start! (
+					ren "%%i" "!zeros!!newnum!!ext!"
+				)
 			)
 		)
 	)
@@ -188,7 +213,7 @@ exit /B
 			set zeros=
 			set pot=no
 			REM Sets the filename to the variable n
-			call :removezeros "%%i"
+			call :removezeros "%%~ni"
 			set ext=%%~xi
 			REM Trying to expand both n and step on this line gave a "missing operator." error for some reason
 			set /A newnum=n-step
@@ -201,6 +226,8 @@ exit /B
 				)
 			)
 			if !_debug!==rens (
+				echo ren "%%i" "!zeros!!newnum!!ext!"
+			) else if !_debug!==yes (
 				echo ren "%%i" "!zeros!!newnum!!ext!"
 			) else (
 				ren "%%i" "!zeros!!newnum!!ext!"
@@ -240,12 +267,6 @@ if %1==-s (
 ) else if %1==--start (
 	set start=%2
 	shift
-) else if %1==-d (
-	set step=%2
-	shift
-) else if %1==--delta (
-	set step=%2
-	shift
 ) else if %1==-n (
 	set qt=%2
 	shift
@@ -259,8 +280,37 @@ if %1==-s (
 	set leadingzeros=yes
 ) else if %1==--leading-zeros (
 	set leadingzeros=yes
+) else if %1==--debug (
+	set _debug=yes
+) else if %1==--renames (
+	set _debug=rens
+) else if %1==increase (
+	set mode=%1
+	if not -%2-==-- (
+		set step=%2
+		shift
+	)
+) else if %1==inc (
+	set mode=%1
+	if not -%2-==-- (
+		set step=%2
+		shift
+	)
+) else if %1==decrease (
+	set mode=%1
+	if not -%2-==-- (
+		set step=%2
+		shift
+	)
+) else if %1==dec (
+	set mode=%1
+	if not -%2-==-- (
+		set step=%2
+		shift
+	)
 ) else (
 	set mode=%1
+	shift
 )
 shift
 if not -%1-==-- goto argloop
@@ -306,8 +356,6 @@ for %%i in (*) do (
 				exit /B
 			)
 		)
-		if -!_firstfile!-==-- set _firstfile=%%~ni
-		set _lastfile=%%~ni
 		set /A count+=1
 	)
 )

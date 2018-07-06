@@ -79,6 +79,8 @@ for %%i in (*) do (
 	if %%~xi==.tar set _procfile=yes
 	if %%~xi==.gz set _procfile=yes
 	if %%~xi==.7z set _procfile=yes
+	if %%~xi==.xz set _procfile=yes
+	if %%~xi==.001 set _procfile=yes
 	if !_procfile!==yes (
 		if !single_dir!==no (
 			set tmp_dst=!destination!%%~ni
@@ -132,7 +134,7 @@ echo When entering a password you must enclose it with qutation marks.
 echo Also, if the password contains an exclamation mark or an ampersand you must
 echo escape it when passing the string to the script.
 echo.
-echo     ex: D:\home\Desktop> xzips -sd -p "12^!35"
+echo     ex: D:\home\Desktop^> xzips -sd -p "12^^^!35"
 echo.
 echo Also bere in mind that the debugging flag won't work when specifying a password
 echo that includes one of those characters.
