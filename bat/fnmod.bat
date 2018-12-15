@@ -17,7 +17,8 @@ if errorlevel 1 (
 if not -%1-==-- goto :main
 
 :printHelp
-echo Change file names for number sequence-based file sets (ex: 01.jpg to 99.jpg)
+echo Change filenames for large file sets. Primarily for number sequence based
+echo file sets (ex: 01.jpg to 99.jpg)
 echo.
 echo fnmod [options] mode [args]
 echo.
@@ -25,14 +26,27 @@ echo   PRIMARY MODES
 echo     normalize (norm)
 echo         Rename all files in the current directory as a number sequence
 echo         (def. 1.png to n.png)
+echo.
 echo     increase(inc) [num]
 echo         Rename all files by increasing them by a specified amount
 echo         Arguments:
-echo             num - Quantity you want to increase by (defaults to 1)
+echo             num (optional) - Quantity you want to increase by (default 1)
+echo.
 echo     decrease(dec) [num]
 echo         Rename all files by decreasing them by a specified amount
 echo         Arguments:
-echo             num - Quantity you want to decrease by (defaults to 1)
+echo             num (optional) - Quantity you want to decrease by (default 1)
+echo.
+echo     replace(rep) string1 string2
+echo         Replace string1 with string2 in all filenames
+echo         Arguments:
+echo             string1 (mandatory) - string to get remove (can use wildcards)
+echo             string2 (optional) - string to put in its place. Not providing this
+echo             argument will simply delete the first string from every file name
+echo.
+echo     delete(del) string
+echo     remove(rem) string
+echo         Aliases for calling replace with no 2nd argument
 echo.
 echo   NOTES
 echo       When using increase or decrease mode, make sure the lower numbered files
@@ -41,11 +55,12 @@ echo       highest numbered file. Otherwise the script will grab the files in th
 echo       wrong order and everything's going to be really messed up
 echo.
 echo   OPTIONS
-echo     -s num (--start) [modes: norm, inc]
+echo     -s num (--start)
+echo         No leading zeroes. The script will add those as necessary
 echo         norm mode:
 echo             Start new filename sequence from num instead of 1
-echo         inc mode:
-echo             Only rename files greater than or equal to num
+echo         inc/dec mode:
+echo             Only change filenames greater than or equal to num
 echo     -cd (--countdown) [mode: norm]
 echo         Normalize filenames by counting down from the starting point instead of
 echo         up. So the first file will be the highest number after completion.
@@ -57,6 +72,8 @@ echo     --debug
 echo         Verbose output for debugging
 echo     --renames
 echo         Don't rename any files, just print what commands will be run instead
+echo     -h (--help)
+echo         Show this help message
 exit /B
 
 
@@ -226,15 +243,49 @@ exit /B
 				)
 			)
 			if !_debug!==rens (
-				echo ren "%%i" "!zeros!!newnum!!ext!"
+				if !n! GEQ !start! (
+					echo n is !n!
+					echo ren "%%i" "!zeros!!newnum!!ext!"
+				)
 			) else if !_debug!==yes (
-				echo ren "%%i" "!zeros!!newnum!!ext!"
+				if !n! GEQ !start! (
+					echo n is !n!
+					echo ren "%%i" "!zeros!!newnum!!ext!"
+				)
 			) else (
-				ren "%%i" "!zeros!!newnum!!ext!"
+				if !n! GEQ !start! (
+					ren "%%i" "!zeros!!newnum!!ext!"
+				)
 			)
 		)
 	)
 exit /B
+
+:replace
+	for %%i in (*) do (
+		if not %%i==!_me! (
+			if !_debug!==yes echo %%i
+			set tmpName=%%i
+			set tmpName=!tmpName:%find%=!
+			if !_debug!==yes echo tmpName: !tmpName!
+			if not !tmpName!==%%i (
+				set newname=%%i
+				set newname=!newname:%find%=%replace%!
+				if !_debug!==rens (
+					echo ren "%%i" "!newname!"
+				) else if !_debug!==yes (
+					echo ren "%%i" "!newname!"
+				) else (
+					ren "%%i" "!newname!"
+				)
+			) else (
+				if !_debug!==yes (
+					echo String not found, skipping "%%i"
+				)
+			)
+		)
+		if !_debug!==yes echo.
+	)
 
 :removezeros
 	set name=%~1
@@ -254,7 +305,6 @@ set _debug=no
 set _me=%~nx0
 set _validmode=0
 set start=1
-set mode=
 set step=1
 set count=0
 set counting=up
@@ -284,75 +334,131 @@ if %1==-s (
 	set _debug=yes
 ) else if %1==--renames (
 	set _debug=rens
+) else if %1==normalize (
+	set mode=norm
+) else if %1==norm (
+	set mode=norm
 ) else if %1==increase (
-	set mode=%1
+	set mode=inc
 	if not -%2-==-- (
 		set step=%2
 		shift
 	)
 ) else if %1==inc (
-	set mode=%1
+	set mode=inc
 	if not -%2-==-- (
 		set step=%2
 		shift
 	)
 ) else if %1==decrease (
-	set mode=%1
+	set mode=dec
 	if not -%2-==-- (
 		set step=%2
 		shift
 	)
 ) else if %1==dec (
-	set mode=%1
+	set mode=dec
 	if not -%2-==-- (
 		set step=%2
 		shift
 	)
-) else (
-	set mode=%1
+) else if %1==replace (
+	set mode=rep
+	if -%2-==-- (
+		goto printHelp
+	)
+	set find=%2
+	if not -%3-==-- (
+		set replace=%3
+	)
 	shift
+	shift
+) else if %1==rep (
+	set mode=rep
+	if -%2-==-- (
+		goto printHelp
+	)
+	set find=%2
+	if not -%3-==-- (
+		set replace=%3
+	)
+	shift
+	shift
+) else if %1==del (
+	set mode=rep
+	if -%2-==-- (
+		goto printHelp
+	)
+	set find=%2
+	shift
+) else if %1==--delete (
+	set mode=rep
+	if -%2-==-- (
+		goto printHelp
+	)
+	set find=%2
+	shift
+) else if %1==rem (
+	set mode=rep
+	if -%2-==-- (
+		goto printHelp
+	)
+	set find=%2
+	shift
+) else if %1==remove (
+	set mode=rep
+	if -%2-==-- (
+		goto printHelp
+	)
+	set find=%2
+	shift
+) else if %1==-h (
+	goto printHelp
+) else if %1==--help (
+	goto printHelp
+) else (
+	echo Unrecognized option: %1
+	goto printHelp
 )
 shift
 if not -%1-==-- goto argloop
 
 if !_debug!==yes (
-	echo Operating mode : !mode!
-	echo Starting at    : !start!
-	echo Step quantity  : !step!
-	echo Counting       : !counting!
-	echo Leading zeros  : !leadingzeros!
+	echo Operating mode   : !mode!
+	echo Starting at      : !start!
+	echo Step quantity    : !step!
+	echo Counting         : !counting!
+	echo Leading zeros    : !leadingzeros!
+	echo Text to remove   : !find!
+	echo Replacement text : !replace!
 )
 
 REM sanity checks
 if -!mode!-==-- goto printHelp
 if !mode!==norm set _validmode=1
-if !mode!==normalize (
-	set mode=norm
-	set _validmode=1
-)
 if !mode!==inc set _validmode=1
-if !mode!==increase (
-	set mode=inc
-	set _validmode=1
-)
 if !mode!==dec set _validmode=1
-if !mode!==decrease (
-	set mode=dec
-	set _validmode=1
-)
+if !mode!==rep set _validmode=1
 if !_validmode!==0 goto printHelp
-REM If any variable isn't a number, the error level will be set to 1
+REM If any of these variables isn't a number (no leading zeros), the error level will be set to 1
 echo !step!| findstr /r "^[1-9][0-9]*$">nul
 echo !start!| findstr /r "^[1-9][0-9]*$">nul
 if not -!qt!-==-- echo !qt!| findstr /r "^[1-9][0-9]*$">nul
 if errorlevel 1 goto printHelp
 
+REM Get file count
 for %%i in (*) do (
 	if not %%i==!_me! (
-		if not !mode!==norm (
+		if !mode!==inc (
 			echo %%~ni| findstr /r "^[0-9][0-9]*$">nul
 			if errorlevel 1 (
-				echo Every filename in the directory must be a number unless normalize mode is chosen
+				echo Every filename in the directory must be a number for increase mode
+				exit /B
+			)
+		) else if !mode!==dec (
+			echo %%~ni| findstr /r "^[0-9][0-9]*$">nul
+			if errorlevel 1 (
+				echo Every filename in the directory must be a number for decrease mode
 				exit /B
 			)
 		)
@@ -371,5 +477,7 @@ if !mode!==norm (
 	goto increase
 ) else if !mode!==dec (
 	goto decrease
+) else if !mode!==rep (
+	goto replace
 )
 goto printHelp
