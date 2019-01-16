@@ -367,7 +367,7 @@ if %1==-s (
 	if -%2-==-- (
 		goto printHelp
 	)
-	set find=%2
+	set find=%~2
 	if not -%3-==-- (
 		set replace=%3
 	)
@@ -378,7 +378,7 @@ if %1==-s (
 	if -%2-==-- (
 		goto printHelp
 	)
-	set find=%2
+	set find=%~2
 	if not -%3-==-- (
 		set replace=%3
 	)
@@ -389,28 +389,28 @@ if %1==-s (
 	if -%2-==-- (
 		goto printHelp
 	)
-	set find=%2
+	set find=%~2
 	shift
 ) else if %1==--delete (
 	set mode=rep
 	if -%2-==-- (
 		goto printHelp
 	)
-	set find=%2
+	set find=%~2
 	shift
 ) else if %1==rem (
 	set mode=rep
 	if -%2-==-- (
 		goto printHelp
 	)
-	set find=%2
+	set find=%~2
 	shift
 ) else if %1==remove (
 	set mode=rep
 	if -%2-==-- (
 		goto printHelp
 	)
-	set find=%2
+	set find=%~2
 	shift
 ) else if %1==-h (
 	goto printHelp

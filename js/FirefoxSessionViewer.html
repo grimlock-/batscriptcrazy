@@ -1,0 +1,249 @@
+<!--
+	This html doc is used to present a Firefox Session js file in a somewhat prettier
+	manner that's easier to visually digest than just the raw json.
+	Won't work in chrome by default, but it will when launched with the argument 
+	--allow-file-access-from-files
+	
+	With version 56, firefox started zipping up its session files. There's probably
+	some way to uncompress them with firefox itself or a utility like 7zip, but
+	I just use https://www.jeffersonscher.com/ffu/scrounger.html
+-->
+<html>
+<head>
+<style type="text/css">
+table, td, tr {
+	border-collapse: collapse;
+	border: 3px solid;
+}
+
+.catRow {
+	background-color: #EEE;
+}
+</style>
+<script type="text/javascript">
+	var columns_in_table = 4;
+	function load(file_to_load) {
+		var the_div = document.getElementById("container");
+		var toc_div = document.getElementById("toc");
+		while(the_div.firstChild){
+			the_div.removeChild(the_div.firstChild);
+		}
+		
+		
+		var req = new XMLHttpRequest();
+		req.onreadystatechange = function()
+		{
+			if(req.readyState === XMLHttpRequest.DONE)
+			{
+				//Not sure why, but chrome returns 0 on success
+				if(req.status === 200 || req.status === 0)
+				{
+					var i = 0, j = 0;
+					var newHTML = "<h3>Windows</h3>";
+					toc_div.insertAdjacentHTML("beforeend", newHTML);
+					//the_div.insertAdjacentHTML("beforeend", newHTML);
+					
+					data = JSON.parse(req.responseText);					
+					for(var w in data.windows)
+					{
+						i++;
+						j = 0;
+						//Update table of contents
+						var tocText = "<a href=\"#window"+i+"header\">Window "+i+"</a><br/>";
+						toc_div.insertAdjacentHTML("beforeend", tocText);
+						//Header tag before table
+						var newH = document.createElement("h3");
+						newH.id = "window"+i+"header";
+						newH.innerText = "Window #"+i;
+						the_div.appendChild(newH);
+						//Table tag
+						var newT = document.createElement("table");
+						newT.id = "window"+i;
+						for(var t in data.windows[w]._closedTabs)
+						{
+							j++;
+							var newR = newT.insertRow();
+							newR.className = "catRow";
+							var td = newR.insertCell();
+							td.colSpan = columns_in_table;
+							var newS = document.createElement("strong");
+							newS.appendChild(document.createTextNode("Closed Tab "+j+" History"));
+							td.appendChild(newS);
+							newR.appendChild(td);
+							for(var e in data.windows[w]._closedTabs[t].state.entries)
+							{
+								var thing = data.windows[w]._closedTabs[t].state.entries[e];
+								var newR = newT.insertRow();
+								//ID
+								var cell_1 = newR.insertCell();
+								cell_1.appendChild(document.createTextNode(thing.ID));
+								//Title
+								var cell_2 = newR.insertCell();
+								cell_2.appendChild(document.createTextNode(thing.title));
+								//URL
+								var cell_3 = newR.insertCell();
+								var link = document.createElement('a');
+								link.href = thing.url;
+								link.appendChild(document.createTextNode(thing.url));
+								cell_3.appendChild(link);
+								//Original URI
+								var cell_4 = newR.insertCell();
+								if(thing.url === thing.originalURI)
+									cell_4.appendChild(document.createTextNode("Same as URL"));
+								else
+									cell_4.appendChild(document.createTextNode(thing.originalURI));
+							}
+						}
+						j = 0;
+						for(var t in data.windows[w].tabs)
+						{
+							j++;
+							var newR = newT.insertRow();
+							newR.className = "catRow";
+							var td = newR.insertCell();
+							td.colSpan = columns_in_table;
+							var newS = document.createElement("strong");
+							newS.appendChild(document.createTextNode("Tab "+j+" History"));
+							td.appendChild(newS);
+							newR.appendChild(td);
+							for(var e in data.windows[w].tabs[t].entries)
+							{
+								var thing = data.windows[w].tabs[t].entries[e];
+								var newR = newT.insertRow();
+								//ID
+								var cell_1 = newR.insertCell();
+								cell_1.appendChild(document.createTextNode(thing.ID));
+								//Title
+								var cell_2 = newR.insertCell();
+								cell_2.appendChild(document.createTextNode(thing.title));
+								//URL
+								var cell_3 = newR.insertCell();
+								var link = document.createElement('a');
+								link.href = thing.url;
+								link.appendChild(document.createTextNode(thing.url));
+								cell_3.appendChild(link);
+								//Original URI
+								var cell_4 = newR.insertCell();
+								if(thing.url === thing.originalURI)
+									cell_4.appendChild(document.createTextNode("Same as URL"));
+								else
+									cell_4.appendChild(document.createTextNode(thing.originalURI));
+							}
+						}
+						the_div.appendChild(newT);
+					}
+					
+					var newHTML = "<h3>Closed Windows</h3>";
+					toc_div.insertAdjacentHTML("beforeend", newHTML);
+					//the_div.insertAdjacentHTML("beforeend", newHTML);
+					var closed_windows_table = document.getElementById("closedwindows");
+					var windows_table = document.getElementById("windows");
+					
+					i=j=0;
+					for(var w in data._closedWindows)
+					{
+						i++;
+						j = 0;
+						//Update table of contents
+						var tocText = "<a href=\"#closedwindow"+i+"header\">Closed Window "+i+"</a><br/>";
+						toc_div.insertAdjacentHTML("beforeend", tocText);
+						//Header tag before table
+						var newH = document.createElement("h3");
+						newH.id = "closedwindow"+i+"header";
+						newH.innerText = "Closed Window #"+i;
+						the_div.appendChild(newH);
+						//Table tag
+						var newT = document.createElement("table");
+						newT.id = "closedwindow"+i;
+						for(var t in data._closedWindows[w]._closedTabs)
+						{
+							j++;
+							var newR = newT.insertRow();
+							newR.className = "catRow";
+							var td = newR.insertCell();
+							td.colSpan = columns_in_table;
+							var newS = document.createElement("strong");
+							newS.appendChild(document.createTextNode("Closed Tab "+j+" History"));
+							td.appendChild(newS);
+							newR.appendChild(td);
+							for(var e in data._closedWindows[w]._closedTabs[t].state.entries)
+							{
+								var thing = data._closedWindows[w]._closedTabs[t].state.entries[e];
+								var newR = newT.insertRow();
+								//ID
+								var cell_1 = newR.insertCell();
+								cell_1.appendChild(document.createTextNode(thing.ID));
+								//Title
+								var cell_2 = newR.insertCell();
+								cell_2.appendChild(document.createTextNode(thing.title));
+								//URL
+								var cell_3 = newR.insertCell();
+								var link = document.createElement('a');
+								link.href = thing.url;
+								link.appendChild(document.createTextNode(thing.url));
+								cell_3.appendChild(link);
+								//Original URI
+								var cell_4 = newR.insertCell();
+								if(thing.url === thing.originalURI)
+									cell_4.appendChild(document.createTextNode("Same as URL"));
+								else
+									cell_4.appendChild(document.createTextNode(thing.originalURI));
+							}
+						}
+						j = 0;
+						for(var t in data._closedWindows[w].tabs)
+						{
+							j++;
+							var newR = newT.insertRow();
+							newR.className = "catRow";
+							var td = newR.insertCell();
+							td.colSpan = columns_in_table;
+							var newS = document.createElement("strong");
+							newS.appendChild(document.createTextNode("Tab "+j+" History"));
+							td.appendChild(newS);
+							newR.appendChild(td);
+							for(var e in data._closedWindows[w].tabs[t].entries)
+							{
+								var thing = data._closedWindows[w].tabs[t].entries[e];
+								var newR = newT.insertRow();
+								//ID
+								var cell_1 = newR.insertCell();
+								cell_1.appendChild(document.createTextNode(thing.ID));
+								//Title
+								var cell_2 = newR.insertCell();
+								cell_2.appendChild(document.createTextNode(thing.title));
+								//URL
+								var cell_3 = newR.insertCell();
+								var link = document.createElement('a');
+								link.href = thing.url;
+								link.appendChild(document.createTextNode(thing.url));
+								cell_3.appendChild(link);
+								//Original URI
+								var cell_4 = newR.insertCell();
+								if(thing.url === thing.originalURI)
+									cell_4.appendChild(document.createTextNode("Same as URL"));
+								else
+									cell_4.appendChild(document.createTextNode(thing.originalURI));
+							}
+						}
+						the_div.appendChild(newT);
+					}
+				}
+				else
+				{
+					console.error("Response code " + req.status);
+				}
+			}
+		}
+		req.open('GET', './'+file_to_load, true);
+		req.send(null);
+	}
+</script>
+</head>
+<body>
+<span>Filename</span>
+<input type="text" id="input" />&nbsp;<button onclick="load(document.getElementById('input').value);">Load</button>
+<div id="toc"></div>
+<div id="container"></div>
+</body>
+</html>
