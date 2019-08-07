@@ -1,6 +1,6 @@
 @echo off
-REM This script is used for modifying filenames in file sets that are named in a number
-REM sequence like 1.jpg, 2.jpg, 3.jpg, etc.
+REM This script is used for modifying filenames, primarily in file sets that are
+REM named in a number sequence like 1.jpg, 2.jpg, 3.jpg, etc.
 
 REM TODO:
 REM     *Test the leading zeros aspect of norm when counting down and going past zero
@@ -25,7 +25,7 @@ echo.
 echo   PRIMARY MODES
 echo     normalize (norm)
 echo         Rename all files in the current directory as a number sequence
-echo         (def. 1.png to n.png)
+echo         (default 1.png to n.png)
 echo.
 echo     increase(inc) [num]
 echo         Rename all files by increasing them by a specified amount
@@ -40,9 +40,11 @@ echo.
 echo     replace(rep) string1 string2
 echo         Replace string1 with string2 in all filenames
 echo         Arguments:
-echo             string1 (mandatory) - string to get remove (can use wildcards)
+echo             string1 (mandatory) - string to remove (can use wildcards)
 echo             string2 (optional) - string to put in its place. Not providing this
 echo             argument will simply delete the first string from every file name
+echo             NOTE: Trying to give an empty string by using two quotes "" will
+echo             actually add two quotes to any files that get renamed
 echo.
 echo     delete(del) string
 echo     remove(rem) string
@@ -367,7 +369,7 @@ if %1==-s (
 	if -%2-==-- (
 		goto printHelp
 	)
-	set find=%~2
+	set find=%2
 	if not -%3-==-- (
 		set replace=%3
 	)
@@ -378,7 +380,7 @@ if %1==-s (
 	if -%2-==-- (
 		goto printHelp
 	)
-	set find=%~2
+	set find=%2
 	if not -%3-==-- (
 		set replace=%3
 	)
@@ -389,28 +391,28 @@ if %1==-s (
 	if -%2-==-- (
 		goto printHelp
 	)
-	set find=%~2
+	set find=%2
 	shift
 ) else if %1==--delete (
 	set mode=rep
 	if -%2-==-- (
 		goto printHelp
 	)
-	set find=%~2
+	set find=%2
 	shift
 ) else if %1==rem (
 	set mode=rep
 	if -%2-==-- (
 		goto printHelp
 	)
-	set find=%~2
+	set find=%2
 	shift
 ) else if %1==remove (
 	set mode=rep
 	if -%2-==-- (
 		goto printHelp
 	)
-	set find=%~2
+	set find=%2
 	shift
 ) else if %1==-h (
 	goto printHelp

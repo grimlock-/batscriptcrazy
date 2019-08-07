@@ -100,6 +100,9 @@ shift
 if not -%1-==-- goto argloop
 
 if !file!==no (
+	if !retrymax! NEQ 0 (
+		echo The --retry option only works with --file
+	)
 	"!streamlink!" -p "!player!" "!url!" !quality!
 	exit /B
 )
@@ -125,6 +128,11 @@ if !size! NEQ 0 (
 REM Empty download
 del "!fname!"
 if !retrymax! EQU -1 (
+	set /A "retrycount+=1"
+	REM 288 * 300sec = 86,400sec = 24hrs
+	if !retrycount! GTR 288 (
+		exit /B
+	)
 	timeout 300
 	goto dlstream
 )

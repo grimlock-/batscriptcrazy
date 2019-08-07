@@ -80,6 +80,7 @@ for %%i in (*) do (
 	if %%~xi==.gz set _procfile=yes
 	if %%~xi==.7z set _procfile=yes
 	if %%~xi==.xz set _procfile=yes
+	if %%~xi==.bz2 set _procfile=yes
 	if %%~xi==.001 set _procfile=yes
 	if !_procfile!==yes (
 		if !single_dir!==no (
