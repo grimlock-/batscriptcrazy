@@ -1,12 +1,26 @@
 <!--
-	This html doc is used to present a Firefox Session js file in a somewhat prettier
-	manner that's easier to visually digest than just the raw json.
-	Won't work in chrome by default, but it will when launched with the argument 
-	--allow-file-access-from-files
+	This html doc is used to present a Firefox Session js file in a somewhat
+	prettier manner that's easier to visually digest than just the raw json.
+	It won't work in chrome by default, but it will when launched with the
+	argument --allow-file-access-from-files
 	
-	With version 56, firefox started zipping up its session files. There's probably
-	some way to uncompress them with firefox itself or a utility like 7zip, but
-	I just use https://www.jeffersonscher.com/ffu/scrounger.html
+	With version 56, firefox started zipping up its session files. There are a
+	few	ways it can be decompressed:
+		1. https://www.jeffersonscher.com/ffu/scrounger.html
+		2. Dejsonlz4 (command line program) - https://github.com/avih/dejsonlz4
+		3. For other alternatives, see https://superuser.com/questions/1363747/how-to-decode-decipher-mozilla-firefox-proprietary-jsonlz4-format-sessionstor
+	
+	Some advice for dealing with Xbox-huge json files:
+		*Google's JS engine was able to JSON.parse() some files that Firefox's
+		couldn't (tested with ~242MB files uncompressed, your mileage may vary
+		for GB+ files)
+		*The python binary can be used to format a json file with the command
+			"python3 -m json.tool session.json > session_pretty.json"
+		though some	text editors like Notepad++ will freeze if you open up the
+		result
+		*Alternatively, https://github.com/WelliSolutions/HugeJsonViewer is a
+		good program that constructs a complete treeview and can handle GB+
+		sized files
 -->
 <html>
 <head>
@@ -19,14 +33,308 @@ table, td, tr {
 .catRow {
 	background-color: #EEE;
 }
+
+.activeTabEntry {
+	background-color: #c8fdd3;
+}
 </style>
 <script type="text/javascript">
 	var columns_in_table = 4;
-	function load(file_to_load) {
+	var line_ending = "\n";
+	function setData()
+	{
+		for(var w in data.windows)
+		{
+			for(var t in data.windows[w].tabs)
+			{
+				if(data.windows[w].tabs[t].entries[0].url == "about:sessionrestore")
+				{
+					try {
+						if(data.windows[w].tabs[t].formdata.id.sessionData)
+						{
+							data = data.windows[w].tabs[t].formdata.id.sessionData;
+							return;
+						}
+					}
+					catch(e)
+					{
+						console.log("caught exception");
+						console.log(e)
+						continue;
+					}
+				}
+			}
+		}
+	}
+	
+	function addWindow(closedWindow, index)
+	{
+		var the_div = document.getElementById("container");
+		var toc_div = document.getElementById("toc");
+		var windowNumber = Number(index)+1;
+		var targetWindow = data.windows[index];
+		if(closedWindow)
+			targetWindow = data._closedWindows[index];
+		
+		//Update table of contents
+		var tocText;
+		if(closedWindow)
+		{
+			tocText = "<a href=\"#closedwindow"+windowNumber+"header\">Closed Window "+windowNumber+"</a> ("+targetWindow.tabs.length+" open tabs, "+targetWindow._closedTabs.length+" closed tabs) <a href=\"#saveclosedwin"+windowNumber+"\" onclick=\"saveWindow(true, "+index+")\">Save Tabs</a>";
+			tocText += "";
+			tocText += "<br/>";
+		}
+		else
+		{
+			tocText = "<a href=\"#window"+windowNumber+"header\">Window "+windowNumber+"</a> ("+targetWindow.tabs.length+" open tabs, "+targetWindow._closedTabs.length+" closed tabs) <a href=\"#savewin"+windowNumber+"\" onclick=\"saveWindow(false, "+index+")\">Save Tabs</a>"
+			tocText += "";
+			tocText += "<br/>";
+		}
+		toc_div.insertAdjacentHTML("beforeend", tocText);
+		//Header tag before table
+		var newH = document.createElement("h3");
+		if(closedWindow)
+		{
+			newH.id = "closedwindow"+windowNumber+"header";
+			newH.innerText = "Closed Window #"+windowNumber;
+		}
+		else
+		{
+			newH.id = "window"+windowNumber+"header";
+			newH.innerText = "Window #"+windowNumber;
+		}
+		the_div.appendChild(newH);
+		//Table tag
+		var newT = document.createElement("table");
+		if(closedWindow)
+			newT.id = "closedwindow"+windowNumber;
+		else
+			newT.id = "window"+windowNumber;
+		for(var t in targetWindow._closedTabs)
+		{
+			var newR = newT.insertRow();
+			newR.className = "catRow";
+			var td = newR.insertCell();
+			td.colSpan = columns_in_table;
+			var newS = document.createElement("strong");
+			newS.appendChild(document.createTextNode("Closed Tab "+(Number(t)+1)+" History"));
+			td.appendChild(newS);
+			newR.appendChild(td);
+			for(var e in targetWindow._closedTabs[t].state.entries)
+			{
+				var mark = false;
+				//Why the fuck is this index property not 0 based?
+				if(targetWindow._closedTabs[t].state.index - 1 == Number(e) && targetWindow._closedTabs[t].state.entries.length > 1)
+					mark = true;
+					
+				var thing = targetWindow._closedTabs[t].state.entries[e];
+				var newR = newT.insertRow();
+				//ID
+					var cell_1 = newR.insertCell();
+					if(mark)
+					{
+						cell_1.className = "activeTabEntry";
+						newS = document.createElement("strong");
+						newS.innerText = thing.ID;
+						cell_1.appendChild(newS);
+					}
+					else
+					{
+						cell_1.appendChild(document.createTextNode(thing.ID));
+					}
+				//Title
+					var cell_2 = newR.insertCell();
+					if(mark)
+					{
+						cell_2.className = "activeTabEntry";
+						newS = document.createElement("strong");
+						newS.innerText = thing.title;
+						cell_2.appendChild(newS);
+					}
+					else
+					{
+						cell_2.appendChild(document.createTextNode(thing.title));
+					}
+				//URL
+					var cell_3 = newR.insertCell();
+					var link = document.createElement('a');
+					link.href = thing.url;
+					link.appendChild(document.createTextNode(thing.url));
+					cell_3.appendChild(link);
+				//Original URI
+					var cell_4 = newR.insertCell();
+					if(thing.url === thing.originalURI)
+						cell_4.appendChild(document.createTextNode("Same as URL"));
+					else
+						cell_4.appendChild(document.createTextNode(thing.originalURI));
+			}
+		}
+		for(var t in targetWindow.tabs)
+		{
+			var newR = newT.insertRow();
+			newR.className = "catRow";
+			var td = newR.insertCell();
+			td.colSpan = columns_in_table;
+			var newS = document.createElement("strong");
+			newS.appendChild(document.createTextNode("Tab "+(Number(t)+1)+" History"));
+			td.appendChild(newS);
+			newR.appendChild(td);
+			for(var e in targetWindow.tabs[t].entries)
+			{
+				var mark = false;
+				//Why the fuck is this index property not 0 based?
+				if(targetWindow.tabs[t].index - 1 == Number(e) && targetWindow.tabs[t].entries.length > 1)
+					mark = true;
+					
+				var thing = targetWindow.tabs[t].entries[e];
+				var newR = newT.insertRow();
+				//ID
+					var cell_1 = newR.insertCell();
+					if(mark)
+					{
+						cell_1.className = "activeTabEntry";
+						newS = document.createElement("strong");
+						newS.innerText = thing.ID;
+						cell_1.appendChild(newS);
+					}
+					else
+					{
+						cell_1.appendChild(document.createTextNode(thing.ID));
+					}
+				//Title
+					var cell_2 = newR.insertCell();
+					if(mark)
+					{
+						cell_2.className = "activeTabEntry";
+						newS = document.createElement("strong");
+						newS.innerText = thing.title
+						cell_2.appendChild(newS);
+					}
+					else
+					{
+						cell_2.appendChild(document.createTextNode(thing.title));
+					}
+				//URL
+					var cell_3 = newR.insertCell();
+					var link = document.createElement('a');
+					link.href = thing.url;
+					link.appendChild(document.createTextNode(thing.url));
+					cell_3.appendChild(link);
+				//Original URI
+					var cell_4 = newR.insertCell();
+					if(thing.url === thing.originalURI)
+						cell_4.appendChild(document.createTextNode("Same as URL"));
+					else
+						cell_4.appendChild(document.createTextNode(thing.originalURI));
+			}
+		}
+		the_div.appendChild(newT);
+	}
+	function saveWindow(closed, index)
+	{
+		var closedTabs = document.getElementById("save_closed_checkbox").checked;
+		var targetWindow = data.windows[index];
+		var output="";
+		if(closed)
+			targetWindow = data._closedWindows[index];
+		if(document.getElementById("windows_newline_checkbox").checked)
+			line_ending = "\r\n";
+		
+		try
+		{
+			output += serializeTabs(targetWindow.tabs, false);
+			if(closedTabs)
+				output += serializeTabs(targetWindow._closedTabs, true);
+		}
+		catch(e)
+		{
+			console.error(e);
+		}
+		
+		//Invisible auto-download link
+		var tag = document.createElement("a");
+		tag.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(output));
+		if(closed)
+		{
+			var fname = "ClosedWindow"+(Number(index)+1);
+			if(document.getElementById("save_history_checkbox").checked)
+				fname += "-History";
+			tag.setAttribute("download", fname);
+		}
+		else
+		{
+			var fname = "Window"+(Number(index)+1);
+			if(document.getElementById("save_history_checkbox").checked)
+				fname += "-History";
+			tag.setAttribute("download", fname);
+		}
+		tag.style.display = "none";
+		document.body.appendChild(tag);
+		tag.click();
+		document.body.removeChild(tag);
+	}
+	function serializeTabs(tabs, closedTabs)
+	{
+		if(tabs.length <= 0)
+			return "";
+		var output="";
+		if(closedTabs)
+			output += line_ending + line_ending + "===============" + line_ending + "= Closed Tabs =" + line_ending + "===============" + line_ending;
+		var saveHistory = document.getElementById("save_history_checkbox").checked;
+		for(var tab in tabs)
+		{
+			if(saveHistory)
+			{
+				//Why the fuck is this index property not 0 based?
+				var i = tabs[tab].index - 1;
+				if(closedTabs)
+				{
+					i = tabs[tab].state.index - 1;
+					output += "Closed ";
+				}
+				output += "Tab " + (Number(tab)+1) + line_ending;
+				var entries = tabs[tab].entries;
+				if(closedTabs)
+					entries = tabs[tab].state.entries;
+					
+				for(var e in entries)
+				{
+					output += "\t";
+					if(Number(e) == i)
+						output += ">>";
+					output += entries[e].url;
+					output += line_ending;
+				}
+			}
+			else
+			{
+				if(closedTabs)
+				{
+					//Why the fuck is this index property not 0 based?
+					var i = tabs[tab].state.index - 1;
+					output += tabs[tab].state.entries[i].url
+				}
+				else
+				{
+					var i = tabs[tab].index - 1;
+					output += tabs[tab].entries[i].url;
+				}
+				output += line_ending;
+			}
+		}
+		return output;
+	}
+	
+	function load(file_to_load)
+	{
+		document.getElementById("loading_image").style = "";
 		var the_div = document.getElementById("container");
 		var toc_div = document.getElementById("toc");
 		while(the_div.firstChild){
 			the_div.removeChild(the_div.firstChild);
+		}
+		while(toc_div.firstChild){
+			toc_div.removeChild(toc_div.firstChild);
 		}
 		
 		
@@ -38,100 +346,16 @@ table, td, tr {
 				//Not sure why, but chrome returns 0 on success
 				if(req.status === 200 || req.status === 0)
 				{
-					var i = 0, j = 0;
 					var newHTML = "<h3>Windows</h3>";
 					toc_div.insertAdjacentHTML("beforeend", newHTML);
 					//the_div.insertAdjacentHTML("beforeend", newHTML);
+					var checkbox = document.getElementById("load_formdata");
 					
-					data = JSON.parse(req.responseText);					
+					data = JSON.parse(req.responseText);
+					if(checkbox.checked)
+						setData();
 					for(var w in data.windows)
-					{
-						i++;
-						j = 0;
-						//Update table of contents
-						var tocText = "<a href=\"#window"+i+"header\">Window "+i+"</a><br/>";
-						toc_div.insertAdjacentHTML("beforeend", tocText);
-						//Header tag before table
-						var newH = document.createElement("h3");
-						newH.id = "window"+i+"header";
-						newH.innerText = "Window #"+i;
-						the_div.appendChild(newH);
-						//Table tag
-						var newT = document.createElement("table");
-						newT.id = "window"+i;
-						for(var t in data.windows[w]._closedTabs)
-						{
-							j++;
-							var newR = newT.insertRow();
-							newR.className = "catRow";
-							var td = newR.insertCell();
-							td.colSpan = columns_in_table;
-							var newS = document.createElement("strong");
-							newS.appendChild(document.createTextNode("Closed Tab "+j+" History"));
-							td.appendChild(newS);
-							newR.appendChild(td);
-							for(var e in data.windows[w]._closedTabs[t].state.entries)
-							{
-								var thing = data.windows[w]._closedTabs[t].state.entries[e];
-								var newR = newT.insertRow();
-								//ID
-								var cell_1 = newR.insertCell();
-								cell_1.appendChild(document.createTextNode(thing.ID));
-								//Title
-								var cell_2 = newR.insertCell();
-								cell_2.appendChild(document.createTextNode(thing.title));
-								//URL
-								var cell_3 = newR.insertCell();
-								var link = document.createElement('a');
-								link.href = thing.url;
-								link.appendChild(document.createTextNode(thing.url));
-								cell_3.appendChild(link);
-								//Original URI
-								var cell_4 = newR.insertCell();
-								if(thing.url === thing.originalURI)
-									cell_4.appendChild(document.createTextNode("Same as URL"));
-								else
-									cell_4.appendChild(document.createTextNode(thing.originalURI));
-							}
-						}
-						j = 0;
-						for(var t in data.windows[w].tabs)
-						{
-							j++;
-							var newR = newT.insertRow();
-							newR.className = "catRow";
-							var td = newR.insertCell();
-							td.colSpan = columns_in_table;
-							var newS = document.createElement("strong");
-							newS.appendChild(document.createTextNode("Tab "+j+" History"));
-							td.appendChild(newS);
-							newR.appendChild(td);
-							for(var e in data.windows[w].tabs[t].entries)
-							{
-								var thing = data.windows[w].tabs[t].entries[e];
-								var newR = newT.insertRow();
-								//ID
-								var cell_1 = newR.insertCell();
-								cell_1.appendChild(document.createTextNode(thing.ID));
-								//Title
-								var cell_2 = newR.insertCell();
-								cell_2.appendChild(document.createTextNode(thing.title));
-								//URL
-								var cell_3 = newR.insertCell();
-								var link = document.createElement('a');
-								link.href = thing.url;
-								link.appendChild(document.createTextNode(thing.url));
-								cell_3.appendChild(link);
-								//Original URI
-								var cell_4 = newR.insertCell();
-								if(thing.url === thing.originalURI)
-									cell_4.appendChild(document.createTextNode("Same as URL"));
-								else
-									cell_4.appendChild(document.createTextNode(thing.originalURI));
-							}
-						}
-						the_div.appendChild(newT);
-					}
+						addWindow(false, w);
 					
 					var newHTML = "<h3>Closed Windows</h3>";
 					toc_div.insertAdjacentHTML("beforeend", newHTML);
@@ -139,100 +363,18 @@ table, td, tr {
 					var closed_windows_table = document.getElementById("closedwindows");
 					var windows_table = document.getElementById("windows");
 					
-					i=j=0;
 					for(var w in data._closedWindows)
-					{
-						i++;
-						j = 0;
-						//Update table of contents
-						var tocText = "<a href=\"#closedwindow"+i+"header\">Closed Window "+i+"</a><br/>";
-						toc_div.insertAdjacentHTML("beforeend", tocText);
-						//Header tag before table
-						var newH = document.createElement("h3");
-						newH.id = "closedwindow"+i+"header";
-						newH.innerText = "Closed Window #"+i;
-						the_div.appendChild(newH);
-						//Table tag
-						var newT = document.createElement("table");
-						newT.id = "closedwindow"+i;
-						for(var t in data._closedWindows[w]._closedTabs)
-						{
-							j++;
-							var newR = newT.insertRow();
-							newR.className = "catRow";
-							var td = newR.insertCell();
-							td.colSpan = columns_in_table;
-							var newS = document.createElement("strong");
-							newS.appendChild(document.createTextNode("Closed Tab "+j+" History"));
-							td.appendChild(newS);
-							newR.appendChild(td);
-							for(var e in data._closedWindows[w]._closedTabs[t].state.entries)
-							{
-								var thing = data._closedWindows[w]._closedTabs[t].state.entries[e];
-								var newR = newT.insertRow();
-								//ID
-								var cell_1 = newR.insertCell();
-								cell_1.appendChild(document.createTextNode(thing.ID));
-								//Title
-								var cell_2 = newR.insertCell();
-								cell_2.appendChild(document.createTextNode(thing.title));
-								//URL
-								var cell_3 = newR.insertCell();
-								var link = document.createElement('a');
-								link.href = thing.url;
-								link.appendChild(document.createTextNode(thing.url));
-								cell_3.appendChild(link);
-								//Original URI
-								var cell_4 = newR.insertCell();
-								if(thing.url === thing.originalURI)
-									cell_4.appendChild(document.createTextNode("Same as URL"));
-								else
-									cell_4.appendChild(document.createTextNode(thing.originalURI));
-							}
-						}
-						j = 0;
-						for(var t in data._closedWindows[w].tabs)
-						{
-							j++;
-							var newR = newT.insertRow();
-							newR.className = "catRow";
-							var td = newR.insertCell();
-							td.colSpan = columns_in_table;
-							var newS = document.createElement("strong");
-							newS.appendChild(document.createTextNode("Tab "+j+" History"));
-							td.appendChild(newS);
-							newR.appendChild(td);
-							for(var e in data._closedWindows[w].tabs[t].entries)
-							{
-								var thing = data._closedWindows[w].tabs[t].entries[e];
-								var newR = newT.insertRow();
-								//ID
-								var cell_1 = newR.insertCell();
-								cell_1.appendChild(document.createTextNode(thing.ID));
-								//Title
-								var cell_2 = newR.insertCell();
-								cell_2.appendChild(document.createTextNode(thing.title));
-								//URL
-								var cell_3 = newR.insertCell();
-								var link = document.createElement('a');
-								link.href = thing.url;
-								link.appendChild(document.createTextNode(thing.url));
-								cell_3.appendChild(link);
-								//Original URI
-								var cell_4 = newR.insertCell();
-								if(thing.url === thing.originalURI)
-									cell_4.appendChild(document.createTextNode("Same as URL"));
-								else
-									cell_4.appendChild(document.createTextNode(thing.originalURI));
-							}
-						}
-						the_div.appendChild(newT);
-					}
+						addWindow(true, w);
 				}
 				else
 				{
 					console.error("Response code " + req.status);
 				}
+				document.getElementById("loading_image").style = "display:none;";
+				document.getElementById("save_history").style = "";
+				document.getElementById("save_closed").style = "";
+				document.getElementById("windows_newline").style = "";
+				document.getElementById("save_closed_checkbox").checked = true;
 			}
 		}
 		req.open('GET', './'+file_to_load, true);
@@ -241,8 +383,14 @@ table, td, tr {
 </script>
 </head>
 <body>
+<input type="checkbox" id="load_formdata"><label>load from about:sessionrestore page formdata</label><br/>
 <span>Filename</span>
 <input type="text" id="input" />&nbsp;<button onclick="load(document.getElementById('input').value);">Load</button>
+<img src="loading.gif" id="loading_image" style="display:none;" />
+<hr>
+<div id="save_history" style="display:none;"><input type="checkbox" id="save_history_checkbox" /><label>Save entire tab history instead of just last active url</label></div><br/>
+<div id="save_closed" style="display:none;"><input type="checkbox" id="save_closed_checkbox" /><label>Save closed tabs also</label></div><br/>
+<div id="windows_newline" style="display:none;"><input type="checkbox" id="windows_newline_checkbox" /><label>Save with windows-style line breaks</label></div><br/>
 <div id="toc"></div>
 <div id="container"></div>
 </body>
